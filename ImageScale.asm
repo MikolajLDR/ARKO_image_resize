@@ -1,17 +1,13 @@
-# Proporcjonalne skalowanie obrazu w dó³ w
-# pionie i w poziomie do podanej rozdzielczoœci
-# Miko³aj Olejnik 304097
-
 .data
 
-getFileIn:	.asciiz "Nazwa obrazu (nazwa.bmp): "
-getFileOut:	.asciiz "Nazwa nowego obrazu (nazwa.bmp): "
-getHeight:	.asciiz "Wysokosc nowego obrazu (w pixelach): "
-getWidth: 	.asciiz "Szerokosc nowego obrazu (w pixelach): "
-savedTo: 	.asciiz "\nPrzeskalowany obraz zapisano w "
-fileOpenE: 	.asciiz "Nie uda³o siê za³adowaæ obrazu!\n"
-fileNameE: 	.asciiz "Nie ma takiego pliku!\n"
-fileSizeE:	.asciiz "Podano za duzy rozmiar nowego pliku!\n"
+getFileIn:	.asciiz "Image file name (name.bmp): "
+getFileOut:	.asciiz "New image file name (name.bmp): "
+getHeight:	.asciiz "New height (in pixels): "
+getWidth: 	.asciiz "New width (in pixels): "
+savedTo: 	.asciiz "\nNew image saved in "
+fileOpenE: 	.asciiz "Fail when loading file\n"
+fileNameE: 	.asciiz "File not found\n"
+fileSizeE:	.asciiz "New size is too big\n"
 
 imageHeader: 	.space 54
 imageInfo:	.space 12
@@ -220,55 +216,55 @@ end:
 	
 	
 scaleImage:
-	ulw 	$t0, 4($a0)		# t0 - szerokoœæ starego zdjêcia
-	ulw 	$t1, 8($a0)		# t1 - wysokoœæ starego zdjêcia
+	ulw 	$t0, 4($a0)		# t0 - oryginal image width
+	ulw 	$t1, 8($a0)		# t1 - oryginal image height
 
 	mul 	$t2, $t0, $t1		
 	sll 	$t3, $t2, 1
-	addu 	$t2, $t3, $t2		# t2 - liczba bajtów starego zdjêcia
+	addu 	$t2, $t3, $t2		# t2 - bytes in oryginal image
 	
 	sll	$a3, $t0, 1
-	addu	$a3, $a3, $t0		# a3 - liczba bajtów wiersza starego zdjêcia
+	addu	$a3, $a3, $t0		# a3 - bytes in row in oryginal image
 	subu 	$t3, $s1, $t2		
-	div 	$t3, $t3, $t1		# t3 - padding w wierszu w starym zdjêciu
-	addu 	$a3, $a3, $t3		# a3 - liczba bajtów wiersza z paddingiem w starym zdjêciu 
+	div 	$t3, $t3, $t1		# t3 - padding in row in oryginal image
+	addu 	$a3, $a3, $t3		# a3 - bytes in row in oryginal image with padding
 	
-	move	$a2, $s4		# a2 - adres pocz¹tek pixeli nowego obrazu
+	move	$a2, $s4		# a2 - address of new image pixels
 	
-	mul 	$t4, $t1, $s7		# ograniczenie do pêtli po wierszach (wysokoœæ starego zdjêcia * wysokoœæ nowego zdjêcia)
-	mul	$t5, $t0, $s6		# ograniczenie do pêtli po kolumnach (szerokoœæ starego zdjêcia * szerokoœæ starego zdjêcia)
-	move	$t2, $zero		# t2 - licznik iteracji po wierszach starego zdjêcia
+	mul 	$t4, $t1, $s7
+	mul	$t5, $t0, $s6
+	move	$t2, $zero		# t2 - outer loop iteration counter
 scalingRow:
-	move	$t7, $zero		# t2 - licznik iteracji po kolumnach starego zdjêcia
+	move	$t7, $zero		# t2 - inner loop iteration counter
 	
-	div 	$t6, $t2, $s7		# t6 - dla ka¿dego wiersza nowego zdjêcia obliczamy który wiersz z orginalnego zdjêcia mu odpowiada
-	mul	$t3, $a3, $t6		# t3 - adres pierwszego pixela w wierszy
+	div 	$t6, $t2, $s7		# t6 - row from oryginal image to get pixels to ew image
+	mul	$t3, $a3, $t6		# t3 - address of first pixel in row
 	
 scalingPixel:
-	# liczymy offset kolejnego pixela w aktualnym wierszu
-	div 	$t8, $t7, $s6		# t8 - adres kolumny w aktualnym wierszu w starym zdjêciu
+	# counting offset of pixel in row
+	div 	$t8, $t7, $s6		# t8 - addres of pixel in this row
 	sll	$t9, $t8, 1
 	addu	$t8, $t9, $t8
 	
-	addu 	$a1, $s2, $t3 		# a1 - do adresu pocz¹tku zdjêcia dodajemy pocz¹tek aktualnego wiersza
-	addu 	$a1, $a1, $t8		# a1 - dodajemy jeszcze kolumny w tym wierszu
+	addu 	$a1, $s2, $t3
+	addu 	$a1, $a1, $t8		# a1 - address of pixel to copy
 
-	# kopiujemy pixel ze starego zdjêcia do nowego
-	lbu 	$t8, ($a1)		# pierwszy bajt koloru starego zdjêcia to t8
-	sb 	$t8, ($a2)		# zapiane do nowego zdjêcia
-	lbu 	$t8, 1($a1)		# drugi bajt koloru starego zdjêcia to t8
-	sb 	$t8, 1($a2)		# zapiane do nowego zdjêcia
-	lbu 	$t8, 2($a1)		# trzeci bajt koloru starego zdjêcia to t8
-	sb 	$t8, 2($a2)		# zapiane do nowego zdjêcia
+	# copy 3 bytes with pixel's color
+	lbu 	$t8, ($a1)
+	sb 	$t8, ($a2)
+	lbu 	$t8, 1($a1)
+	sb 	$t8, 1($a2)
+	lbu 	$t8, 2($a1)
+	sb 	$t8, 2($a2)
 	
-	addiu 	$a2, $a2, 3		# przechodzimy do kolejnego pixela w nowym zdjêciu
+	addiu 	$a2, $a2, 3		# moving to next pixel in new image
 	
-	addu	$t7, $t7, $t0		# zwiêkszamy t7 o szerokoœæ starego zdjêcia
-	blt 	$t7, $t5, scalingPixel	# jeœli nie skoñczyliœmy wiersz to wracamy
+	addu	$t7, $t7, $t0
+	blt 	$t7, $t5, scalingPixel	# if row is finished
 
 nextRow:
-	addu	$t2, $t2, $t1		# zwiêkszamy t2 o wysokoœæ starego zdjêcia
-	blt 	$t2, $t4, scalingRow	# jeœli nie skoñczyliœmy ca³ego zdjêcia to wracamy
+	addu	$t2, $t2, $t1
+	blt 	$t2, $t4, scalingRow	# if iamge is finished
 	
 finishScale:
 	jr 	$ra			# jump register to addres in ra
